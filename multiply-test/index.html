@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一位数乘法挑战 (1分钟10题版)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px 0;
+        }
+
+        #game-container {
+            width: 400px;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+        #start-screen, #result-screen {
+            display: block;
+        }
+
+        #quiz-screen {
+            display: none;
+        }
+
+        h1 {
+            color: #0056b3;
+            margin-top: 0;
+        }
+
+        #quiz-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 25px;
+        }
+
+        #timer {
+            color: #d9534f;
+            font-weight: bold;
+        }
+
+        #problem {
+            font-size: 3em; 
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin: 30px 0;
+            color: #222;
+        }
+
+        #answer-input {
+            width: 150px;
+            font-size: 2.5em;
+            text-align: center;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            -webkit-appearance: textfield;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        #feedback {
+            height: 30px; 
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .correct {
+            color: #5cb85c;
+        }
+
+        .incorrect {
+            color: #d9534f;
+        }
+
+        button {
+            font-size: 1.2em;
+            padding: 12px 25px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #result-screen h2 {
+            font-size: 1.8em;
+            color: #333;
+        }
+
+        #incorrect-list {
+            margin-top: 25px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+        }
+        #incorrect-list h4 {
+            margin-top: 15px;
+            margin-bottom: 10px;
+            color: #d9534f;
+            text-align: center;
+        }
+        #incorrect-list ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        #incorrect-list li {
+            padding: 8px 5px;
+            border-bottom: 1px solid #eee;
+            font-size: 1.1em;
+            font-family: monospace; 
+        }
+        #incorrect-list li:last-child {
+            border-bottom: none;
+        }
+        #incorrect-list li strong {
+            color: #333;
+            display: inline-block;
+            min-width: 30px; 
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        
+        <div id="start-screen">
+            <h1>一位数乘法挑战</h1>
+            <p>准备好在1分钟内完成10道题了吗？</p>
+            <p><strong>(范围：1-9)</strong></p>
+            <button id="start-button">开始挑战</button>
+        </div>
+
+        <div id="quiz-screen">
+            <div id="quiz-header">
+                <span id="question-counter">题目: 1/10</span>
+                <span id="timer">时间: 1:00</span>
+            </div>
+            
+            <form id="quiz-form">
+                <div id="problem">
+                    <span id="num1">0</span> x <span id="num2">0</span> =
+                </div>
+                <input type="number" id="answer-input" autocomplete="off" required>
+            </form>
+
+            <div id="feedback"></div>
+        </div>
+
+        <div id="result-screen" style="display: none;">
+            <h2>挑战结束！</h2>
+            <p id="final-score">你的得分: 0 / 10</p>
+            
+            <div id="incorrect-list"></div>
+
+            <button id="restart-button">再试一次</button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM 元素获取 ---
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        
+        const timerEl = document.getElementById('timer');
+        const questionCounterEl = document.getElementById('question-counter');
+        const num1El = document.getElementById('num1');
+        const num2El = document.getElementById('num2');
+        const quizForm = document.getElementById('quiz-form');
+        const answerInput = document.getElementById('answer-input');
+        const feedbackEl = document.getElementById('feedback');
+        const finalScoreEl = document.getElementById('final-score');
+        const incorrectListEl = document.getElementById('incorrect-list');
+
+
+        // --- 游戏状态变量 ---
+        // --- 这是改动 2: 修改总题数 ---
+        const TOTAL_QUESTIONS = 10;
+        // --- 这是改动 3: 修改总时间 (秒) ---
+        const START_TIME = 60; // 1 分钟
+
+        let currentQuestion = 1;
+        let score = 0;
+        let timeLeft = START_TIME;
+        let timerInterval = null;
+        let currentCorrectAnswer = 0;
+        let incorrectQuestions = [];
+
+        // --- 事件监听 ---
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', restartGame);
+        quizForm.addEventListener('submit', checkAnswer);
+
+        // --- 核心功能函数 ---
+
+        function startGame() {
+            currentQuestion = 1;
+            score = 0;
+            timeLeft = START_TIME;
+            feedbackEl.textContent = '';
+            feedbackEl.className = '';
+            incorrectQuestions = [];
+            incorrectListEl.innerHTML = '';
+
+            startScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+            quizScreen.style.display = 'block';
+
+            generateQuestion();
+            startTimer();
+            updateQuestionCounter();
+            answerInput.focus();
+        }
+
+        function generateQuestion() {
+            if (currentQuestion > TOTAL_QUESTIONS) {
+                endGame("complete");
+                return;
+            }
+
+            const n1 = Math.floor(Math.random() * 9) + 1; // 1-9 
+            const n2 = Math.floor(Math.random() * 9) + 1; // 1-9 
+
+            currentCorrectAnswer = n1 * n2; 
+
+            num1El.textContent = n1;
+            num2El.textContent = n2;
+
+            updateQuestionCounter();
+        }
+
+        function startTimer() {
+            timerEl.textContent = `时间: ${formatTime(timeLeft)}`;
+            clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = `时间: ${formatTime(timeLeft)}`;
+                if (timeLeft <= 0) {
+                    endGame("timeout");
+                }
+            }, 1000);
+        }
+
+        function checkAnswer(event) {
+            event.preventDefault(); 
+            if (answerInput.value === '') return;
+            
+            const userAnswer = parseInt(answerInput.value, 10);
+
+            if (userAnswer === currentCorrectAnswer) {
+                score++;
+                feedbackEl.textContent = "正确！";
+                feedbackEl.className = 'correct';
+            } else {
+                feedbackEl.textContent = `错误！正确答案是: ${currentCorrectAnswer}`;
+                feedbackEl.className = 'incorrect';
+
+                incorrectQuestions.push({
+                    problem: `${num1El.textContent} x ${num2El.textContent}`,
+                    answer: currentCorrectAnswer,
+                    userAnswer: isNaN(userAnswer) ? '未填' : userAnswer // 顺便记录下用户的错误答案
+                });
+            }
+
+            currentQuestion++;
+            answerInput.value = '';
+            generateQuestion(); 
+            answerInput.focus();
+        }
+
+        function endGame(reason) {
+            clearInterval(timerInterval); 
+            
+            finalScoreEl.textContent = `你的得分: ${score} / ${TOTAL_QUESTIONS}`;
+
+            if (reason === "timeout") {
+                feedbackEl.textContent = "时间到！";
+                feedbackEl.className = 'incorrect';
+            }
+
+            // 生成错题列表
+            incorrectListEl.innerHTML = ''; // 先清空
+            if (incorrectQuestions.length > 0) {
+                let listHtml = '<h4>错题回顾:</h4><ul>';
+                incorrectQuestions.forEach(item => {
+                    // 我们在上一版中添加了 userAnswer 的记录，这里可以显示出来
+                    listHtml += `<li>${item.problem} = <strong>${item.answer}</strong> (你的答案: ${item.userAnswer})</li>`;
+                });
+                listHtml += '</ul>';
+                incorrectListEl.innerHTML = listHtml;
+            }
+
+
+            quizScreen.style.display = 'none';
+            resultScreen.style.display = 'block';
+        }
+
+        function restartGame() {
+            resultScreen.style.display = 'none';
+            startScreen.style.display = 'block';
+            timerEl.textContent = `时间: ${formatTime(START_TIME)}`;
+            // 确保问题计数器也重置显示 (虽然 updateQuestionCounter 会在 startGame 时调用，但这是为了UI立即响应)
+            questionCounterEl.textContent = `题目: 1/${TOTAL_QUESTIONS}`;
+        }
+
+        // --- 辅助工具函数 ---
+
+        function updateQuestionCounter() {
+            questionCounterEl.textContent = `题目: ${Math.min(currentQuestion, TOTAL_QUESTIONS)}/${TOTAL_QUESTIONS}`;
+        }
+
+        function formatTime(seconds) {
+            const min = Math.floor(seconds / 60);
+            const sec = seconds % 60;
+            return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+        }
+
+    </script>
+</body>
+</html>
